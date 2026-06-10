@@ -1,0 +1,13 @@
+# 환경 변수 및 구글 API 비밀키 파일 (보안을 위해 반드시 제외해야 함)
+.env
+credentials.json
+
+# 파이썬 캐시 및 가상환경
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# 에디터 설정
+.vscode/
+.idea/
