@@ -37,12 +37,12 @@ class TestStockUpdater(unittest.TestCase):
         ]
         
         # 4. Mock Price Fetching
-        # Return 73500 for Samsung (005930), 48000 for Kakao (035720)
+        # Return {"price": 73500, "prev_close": 73000} for Samsung, {"price": 48000, "prev_close": 49000} for Kakao
         def side_effect(code):
             if code == "005930":
-                return 73500
+                return {"price": 73500, "prev_close": 73000}
             elif code == "035720":
-                return 48000
+                return {"price": 48000, "prev_close": 49000}
             return None
         mock_get_price.side_effect = side_effect
         
@@ -63,22 +63,27 @@ class TestStockUpdater(unittest.TestCase):
         called_args, _ = mock_worksheet.update_cells.call_args
         cells = called_args[0]
         
-        # Samsung Electronics (Row 2): Price at E (Col 5) = 73500
-        # Kakao (Row 3): Price at E (Col 5) = 48000
-        # Check that cells list contains the expected coordinates and values
+        # Samsung Electronics (Row 2): Price at E (Col 5) = 73500, Diff at F (Col 6) = 500, Time at G (Col 7)
         samsung_price_cell = next((c for c in cells if c.row == 2 and c.col == 5), None)
+        samsung_diff_cell = next((c for c in cells if c.row == 2 and c.col == 6), None)
+        samsung_time_cell = next((c for c in cells if c.row == 2 and c.col == 7), None)
+        
+        # Kakao (Row 3): Price at E (Col 5) = 48000, Diff at F (Col 6) = -1000, Time at G (Col 7)
         kakao_price_cell = next((c for c in cells if c.row == 3 and c.col == 5), None)
+        kakao_diff_cell = next((c for c in cells if c.row == 3 and c.col == 6), None)
         
         self.assertIsNotNone(samsung_price_cell)
         self.assertEqual(samsung_price_cell.value, 73500)
+        self.assertIsNotNone(samsung_diff_cell)
+        self.assertEqual(samsung_diff_cell.value, 500)
+        self.assertIsNotNone(samsung_time_cell)
+        self.assertTrue(samsung_time_cell.value != "")
         
         self.assertIsNotNone(kakao_price_cell)
         self.assertEqual(kakao_price_cell.value, 48000)
-        
-        # Also verify update time cells (Col 6) exist
-        samsung_time_cell = next((c for c in cells if c.row == 2 and c.col == 6), None)
-        self.assertIsNotNone(samsung_time_cell)
-        self.assertTrue(samsung_time_cell.value != "")
+        self.assertIsNotNone(kakao_diff_cell)
+        self.assertEqual(kakao_diff_cell.value, -1000)
+
 
 if __name__ == '__main__':
     unittest.main()

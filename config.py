@@ -16,4 +16,6 @@ COL_STOCK_NAME = 2   # B열 (종목명)
 COL_STOCK_CODE = 3   # C열 (종목코드)
 COL_HOLDING_QTY = 4  # D열 (보유수량)
 COL_CURRENT_PRICE = 5 # E열 (현재가)
-COL_UPDATE_TIME = 6   # F열 (업데이트 시간, 추가 가능)
+COL_PRICE_DIFF = 6    # F열 (전일대비 차이)
+COL_UPDATE_TIME = 7   # G열 (업데이트 시간)
+

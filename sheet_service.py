@@ -9,6 +9,7 @@ from config import (
     CREDENTIALS_FILE,
     COL_STOCK_CODE,
     COL_CURRENT_PRICE,
+    COL_PRICE_DIFF,
     COL_UPDATE_TIME
 )
 from stock_service import clean_stock_code, get_korean_stock_price
@@ -73,17 +74,23 @@ def update_stock_prices_in_sheet():
             continue
             
         logger.info(f"종목코드 조회 중: {cleaned_code} (행 번호: {row_idx})")
-        price = get_korean_stock_price(cleaned_code)
+        res = get_korean_stock_price(cleaned_code)
         
-        if price is not None:
+        if res is not None:
+            price = res["price"]
+            prev_close = res["prev_close"]
+            diff = price - prev_close
+            
             # E열 (현재가) 업데이트 셀 생성
             cells_to_update.append(Cell(row=row_idx, col=COL_CURRENT_PRICE, value=price))
-            # F열 (업데이트 시간) 업데이트 셀 생성
+            # F열 (전일대비 차이) 업데이트 셀 생성
+            cells_to_update.append(Cell(row=row_idx, col=COL_PRICE_DIFF, value=diff))
+            # G열 (업데이트 시간) 업데이트 셀 생성
             cells_to_update.append(Cell(row=row_idx, col=COL_UPDATE_TIME, value=now_str))
             
             # 종목명(B열) 정보 로깅용
             stock_name = row[1] if len(row) > 1 else "알 수 없음"
-            logger.info(f"-> {stock_name} ({cleaned_code}) 현재가: {price:,}원")
+            logger.info(f"-> {stock_name} ({cleaned_code}) 현재가: {price:,}원 (전일대비: {diff:+,}원)")
             updated_count += 1
         else:
             logger.warning(f"-> {cleaned_code} 시세 조회 실패")

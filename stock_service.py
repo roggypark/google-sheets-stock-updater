@@ -30,7 +30,7 @@ def clean_stock_code(raw_code):
 
 def _get_price_from_naver(code):
     """
-    네이버 금융에서 실시간 현재가를 크롤링하여 반환합니다 (지연 없음).
+    네이버 금융에서 실시간 현재가와 전일 종가를 크롤링하여 반환합니다 (지연 없음).
     """
     import urllib.request
     import re
@@ -45,28 +45,35 @@ def _get_price_from_naver(code):
         with urllib.request.urlopen(req, timeout=5) as response:
             html = response.read().decode('euc-kr', errors='ignore')
             # 현재가가 담긴 no_today 영역의 blind 스팬 검색
-            match = re.search(r'class="no_today".*?<span class="blind">([0-9,]+)</span>', html, re.DOTALL)
-            if match:
-                price_str = match.group(1).replace(',', '')
-                return int(price_str)
+            match_today = re.search(r'class="no_today".*?<span class="blind">([0-9,]+)</span>', html, re.DOTALL)
+            price = int(match_today.group(1).replace(',', '')) if match_today else None
+            
+            # 전일 종가 검색 (sp_txt2 가 "전일" 텍스트 이미지)
+            match_prev = re.search(r'class="first".*?sp_txt2.*?blind">([0-9,]+)</span>', html, re.DOTALL)
+            prev_close = int(match_prev.group(1).replace(',', '')) if match_prev else None
+            
+            if price is not None and prev_close is not None:
+                return price, prev_close
     except Exception as e:
-        logger.debug(f"네이버 금융 현재가 조회 실패 ({code}): {e}")
+        logger.debug(f"네이버 금융 현재가/전일가 조회 실패 ({code}): {e}")
     return None
 
 def get_korean_stock_price(code):
     """
-    6자리 종목코드에 대해 네이버 금융 실시간 가격을 우선 조회하고,
-    실패 시 yfinance를 백업으로 조회하여 현재가를 반환합니다.
+    6자리 종목코드에 대해 네이버 금융 실시간 가격 및 전일 종가를 우선 조회하고,
+    실패 시 yfinance를 백업으로 조회하여 반환합니다.
+    반환값: {"price": 현재가, "prev_close": 전일종가} 또는 실패 시 None
     """
     cleaned_code = clean_stock_code(code)
     if not cleaned_code:
         logger.warning(f"유효하지 않은 종목코드 형식: {code}")
         return None
         
-    # 1. 네이버 금융 실시간 현재가 시도 (실시간, 지연 없음)
-    price = _get_price_from_naver(cleaned_code)
-    if price is not None:
-        return price
+    # 1. 네이버 금융 실시간 현재가/전일가 시도 (실시간, 지연 없음)
+    res = _get_price_from_naver(cleaned_code)
+    if res is not None:
+        price, prev_close = res
+        return {"price": price, "prev_close": prev_close}
         
     logger.info(f"네이버 금융 조회 실패로 yfinance 백업 조회를 시작합니다: {cleaned_code}")
     
@@ -74,8 +81,11 @@ def get_korean_stock_price(code):
     try:
         ticker_ks = yf.Ticker(f"{cleaned_code}.KS")
         price = ticker_ks.fast_info.get('lastPrice')
+        prev_close = ticker_ks.fast_info.get('previousClose')
         if price is not None and not (isinstance(price, float) and str(price) == 'nan'):
-            return int(round(price))
+            p_val = int(round(price))
+            pc_val = int(round(prev_close)) if prev_close is not None else p_val
+            return {"price": p_val, "prev_close": pc_val}
     except Exception as e:
         logger.debug(f"코스피({cleaned_code}.KS) 백업 조회 실패: {e}")
         
@@ -83,26 +93,28 @@ def get_korean_stock_price(code):
     try:
         ticker_kq = yf.Ticker(f"{cleaned_code}.KQ")
         price = ticker_kq.fast_info.get('lastPrice')
+        prev_close = ticker_kq.fast_info.get('previousClose')
         if price is not None and not (isinstance(price, float) and str(price) == 'nan'):
-            return int(round(price))
+            p_val = int(round(price))
+            pc_val = int(round(prev_close)) if prev_close is not None else p_val
+            return {"price": p_val, "prev_close": pc_val}
     except Exception as e:
         logger.debug(f"코스닥({cleaned_code}.KQ) 백업 조회 실패: {e}")
         
-    logger.error(f"종목코드 {cleaned_code}의 현재가를 조회할 수 없습니다.")
+    logger.error(f"종목코드 {cleaned_code}의 현재가 및 전일가를 조회할 수 없습니다.")
     return None
-
 
 def fetch_prices_batch(codes):
     """
-    여러 종목코드의 현재가를 딕셔너리 형태로 한 번에 조회합니다.
-    결과 예: {'005930': 73500, '293490': 25000}
+    여러 종목코드의 현재가/전일가 정보를 딕셔너리 형태로 한 번에 조회합니다.
     """
     results = {}
     for code in codes:
         cleaned = clean_stock_code(code)
         if not cleaned:
             continue
-        price = get_korean_stock_price(cleaned)
-        if price is not None:
-            results[cleaned] = price
+        res = get_korean_stock_price(cleaned)
+        if res is not None:
+            results[cleaned] = res
     return results
+
