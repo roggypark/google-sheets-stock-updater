@@ -99,6 +99,19 @@ def update_stock_prices_in_sheet():
         logger.info(f"구글 시트에 현재가 일괄 업데이트 중... (업데이트 대상 종목: {updated_count}개)")
         # USER_ENTERED 옵션을 주어 셀에 문자열 대신 숫자 포맷이 올바르게 들어가도록 설정
         worksheet.update_cells(cells_to_update, value_input_option='USER_ENTERED')
+        
+        # F열(전일대비)에 대해 양수면 빨간색(+), 음수면 파란색(-), 0이면 검은색으로 표시되도록 서식 지정
+        try:
+            logger.info("F열(전일대비)에 사용자 지정 숫자 서식 적용 중...")
+            worksheet.format("F2:F", {
+                "numberFormat": {
+                    "type": "NUMBER",
+                    "pattern": "[Red]+#,##0;[Blue]-#,##0;0"
+                }
+            })
+        except Exception as e:
+            logger.warning(f"F열 서식 지정 적용 실패 (동작에는 영향 없음): {e}")
+            
         logger.info("구글 시트 업데이트가 완료되었습니다!")
     else:
         logger.warning("업데이트할 가격 데이터가 없습니다.")

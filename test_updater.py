@@ -83,6 +83,14 @@ class TestStockUpdater(unittest.TestCase):
         self.assertEqual(kakao_price_cell.value, 48000)
         self.assertIsNotNone(kakao_diff_cell)
         self.assertEqual(kakao_diff_cell.value, -1000)
+        
+        # Verify format was called
+        mock_worksheet.format.assert_called_with("F2:F", {
+            "numberFormat": {
+                "type": "NUMBER",
+                "pattern": "[Red]+#,##0;[Blue]-#,##0;0"
+            }
+        })
 
 
 if __name__ == '__main__':
