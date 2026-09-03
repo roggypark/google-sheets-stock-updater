@@ -9,6 +9,7 @@ def clean_stock_code(raw_code):
     예: 5930 (int) -> '005930'
         ' 35720 ' -> '035720'
         '005930.KS' -> '005930'
+        '0126Z0' -> '0126Z0'
     """
     if raw_code is None:
         return None
@@ -19,8 +20,8 @@ def clean_stock_code(raw_code):
     if code_str.upper().endswith('.KS') or code_str.upper().endswith('.KQ'):
         code_str = code_str[:-3]
         
-    # 숫자만 남기기
-    code_str = ''.join(c for c in code_str if c.isdigit())
+    # 영문 대소문자 및 숫자만 남기기 (알파벳 포함 주식 코드 지원)
+    code_str = ''.join(c for c in code_str if c.isalnum()).upper()
     
     if not code_str:
         return None

@@ -92,6 +92,14 @@ class TestStockUpdater(unittest.TestCase):
             }
         })
 
+    def test_clean_stock_code_alphanumeric(self):
+        from stock_service import clean_stock_code
+        self.assertEqual(clean_stock_code("0126Z0"), "0126Z0")
+        self.assertEqual(clean_stock_code("0126z0"), "0126Z0")
+        self.assertEqual(clean_stock_code("005930"), "005930")
+        self.assertEqual(clean_stock_code(5930), "005930")
+        self.assertEqual(clean_stock_code("0126Z0.KS"), "0126Z0")
+
 
 if __name__ == '__main__':
     unittest.main()
